@@ -10,6 +10,7 @@ function App() {
 
   async function addToFile() {
     try {
+      console.log(typeof date)
       const response = await invoke("add_task_to_file", {
         name: name,
         date: date,
@@ -33,30 +34,36 @@ function App() {
         }}
       >
         <input
-        className="p-2 rounded-md"
+          className="p-2 rounded-md"
           id="task-name"
           onChange={(e) => setName(e.currentTarget.value)}
           placeholder="Task Name"
         />
         <input
-        className="p-2 rounded-md"
+          className="p-2 rounded-md"
           id="task-cat"
           onChange={(e) => setCategory(e.currentTarget.value)}
           placeholder="Category"
         />
         <input
-        className="p-2 rounded-md"
+          className="p-2 rounded-md"
           id="due-date"
           onChange={(e) => setDate(e.currentTarget.value)}
+          type="date"
           placeholder="Due Date"
         />
         <input
-        className="p-2 rounded-md"
+          className="p-2 rounded-md"
           id="task-comp-time"
           onChange={(e) => setTime(e.currentTarget.value)}
           placeholder="Time to complete (hrs)"
         />
-        <button className="bg-white p-3 w-28 text-center mx-auto rounded-md" type="submit">Submit</button>
+        <button
+          className="bg-white p-3 w-28 text-center mx-auto rounded-md"
+          type="submit"
+        >
+          Submit
+        </button>
       </form>
     </div>
   );
