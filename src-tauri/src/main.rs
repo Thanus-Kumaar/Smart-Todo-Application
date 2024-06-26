@@ -42,6 +42,7 @@ fn add_task_to_file(
     // Push task to heap
     let mut heap = state.heap.lock().unwrap();
     push_heap(&mut heap, task)?;
+    heap_up(&mut heap)?;
 
     // Write to file
     let string_to_write = format!("{},{},{},{}\n", name, date, category, completion_time);
@@ -60,6 +61,28 @@ fn add_task_to_file(
 // Function to add data into the heap
 fn push_heap(heap: &mut Vec<Option<Box<Task>>>, task: Task) -> Result<(), ()> {
     heap.push(Some(Box::new(task)));
+    Ok(())
+}
+
+// Function to run heap up
+fn heap_up(heap: &mut Vec<Option<Box<Task>>>) -> Result<(), ()> {
+    let mut index: usize = heap.len() - 1;
+    let mut parent_index: usize;
+    while index > 0 {
+        parent_index = (index - 1) / 2;
+        if let Some(parent_task) = heap[parent_index].as_ref() {
+            if let Some(child_task) = heap[index].as_ref() {
+                if parent_task._priority > child_task._priority {
+                    heap.swap( parent_index, index);
+                } else if parent_task._priority == child_task._priority {
+                    if parent_task._completion_time >= child_task._completion_time {
+                        heap.swap( parent_index, index);
+                    }
+                }
+            }
+        }
+        index = parent_index;
+    }
     Ok(())
 }
 
