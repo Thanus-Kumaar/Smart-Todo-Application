@@ -1,6 +1,7 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use chrono::{Duration, Local, NaiveDate};
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -15,6 +16,7 @@ struct Task {
     _date: String,
     _category: String,
     _completion_time: u32,
+    _priority: u32,
 }
 
 // command to add data into file and heap
@@ -24,15 +26,19 @@ fn add_task_to_file(
     date: String,
     category: String,
     completion_time: u32,
-    state: tauri::State<'_, AppState>,
+    state: tauri::State<AppState>,
 ) -> Result<String, ()> {
+    let date_vector: Vec<&str> = date.split("-").collect();
+    let priority: u32 = calculate_priority(date_vector[0], date_vector[1], date_vector[2]);
+    println!("{priority}");
     let task: Task = Task {
         _name: name.clone(),
         _date: date.clone(),
         _category: category.clone(),
         _completion_time: completion_time,
+        _priority: priority,
     };
-    
+
     // Push task to heap
     let mut heap = state.heap.lock().unwrap();
     push_heap(&mut heap, task)?;
@@ -55,6 +61,33 @@ fn add_task_to_file(
 fn push_heap(heap: &mut Vec<Option<Box<Task>>>, task: Task) -> Result<(), ()> {
     heap.push(Some(Box::new(task)));
     Ok(())
+}
+
+// Function to calculate priority
+// Priority is determined by the number of days left for the deadline of the task
+fn calculate_priority(year: &str, month: &str, day: &str) -> u32 {
+    let date = NaiveDate::from_ymd_opt(
+        year.parse::<i32>().unwrap(),
+        month.parse::<u32>().unwrap(),
+        day.parse::<u32>().unwrap(),
+    )
+    .unwrap();
+    let curr_date = Local::now(); // current date
+    let difference: Duration = date - curr_date.date_naive();
+    let no_of_days: i64 = difference.num_days();
+
+    // deadline today - priority : 1
+    // deadline within 2 days - priority : 2
+    // deadline within 7 days - priority : 3
+    // deadline within 2 weeks - priority : 4
+    // else - priority : 5
+    match no_of_days {
+        0 => 1,
+        1 | 2 => 2,
+        3..=7 => 3,
+        8..=14 => 4,
+        _ => 5,
+    }
 }
 
 // Function to print heap
