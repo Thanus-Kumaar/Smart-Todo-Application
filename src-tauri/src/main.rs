@@ -45,24 +45,25 @@ fn add_task_to_file(
     // Write to file
     let string_to_write = format!("{},{},{},{}\n", name, date, category, completion_time);
     let mut file = File::options()
-        .append(false)
+        .write(true)
+        .truncate(true)
         .open(FILE_PATH)
         .expect("Unable to open file for writing");
     file.write_all(string_to_write.as_bytes())
         .expect("Error writing into file!");
 
+    println!("HEAP:");
     print_heap(&heap);
 
     Ok(String::from("All Good"))
 }
 
 #[tauri::command]
-fn delete_task(
-    name: String,
-    state: tauri::State<AppState>,
-) -> Result<(), String> {
+fn delete_task(name: String, state: tauri::State<AppState>) -> Result<(), String> {
     let mut heap = state.heap.lock().unwrap();
-    pop_heap(&mut heap, name);
+    pop_heap(&mut heap, name).map_err(|e| format!("Error occurred: {}", e))?;
+    println!("HEAP:");
+    print_heap(&heap);
     Ok(())
 }
 
@@ -185,9 +186,16 @@ fn print_heap(heap: &Vec<Option<Box<Task>>>) {
 }
 
 // Function to remove from heap
-fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> Result<(),()> {
+fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> Result<(), String> {
+    if heap.len() == 0 {
+        return Ok(());
+    }
     let last_index = heap.len() - 1;
-    let index_to_pop = search_heap_by_name(heap, task_name).unwrap();
+    let option_index_to_pop = search_heap_by_name(heap, task_name);
+    let index_to_pop: usize = match option_index_to_pop {
+        Some(index) => index,
+        None => return Err(String::from("Task name not found")),
+    };
     heap.swap(index_to_pop, last_index);
     heap.pop();
     heap_down(heap, index_to_pop).expect("Error in heap down!");
@@ -215,7 +223,7 @@ fn main() {
 
     tauri::Builder::default()
         .manage(app_state) // Manage app state
-        .invoke_handler(tauri::generate_handler![add_task_to_file])
+        .invoke_handler(tauri::generate_handler![add_task_to_file, delete_task])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
