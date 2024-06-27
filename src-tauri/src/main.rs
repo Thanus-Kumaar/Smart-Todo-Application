@@ -27,7 +27,11 @@ fn add_task_to_file(
     category: String,
     completion_time: u32,
     state: tauri::State<AppState>,
-) -> Result<String, ()> {
+) -> Result<String, String> {
+    // validating the parameters
+    if name == "" || date == "" || category == "" || completion_time == 0 {
+        return Err(String::from("Parameters are incorrect!"));
+    }
     let date_vector: Vec<&str> = date.split("-").collect();
     let priority: u32 = calculate_priority(date_vector[0], date_vector[1], date_vector[2]);
     println!("{priority}");
@@ -43,7 +47,7 @@ fn add_task_to_file(
     let mut heap = state.heap.lock().unwrap();
     push_heap(&mut heap, task)?;
     // Write to file
-    let string_to_write = format!("{},{},{},{}\n", name, date, category, completion_time);
+    let string_to_write = format!("{},{},{},{},{}\n", name, date, category, completion_time, priority);
     let mut file = File::options()
         .write(true)
         .truncate(true)
@@ -68,7 +72,7 @@ fn delete_task(name: String, state: tauri::State<AppState>) -> Result<(), String
 }
 
 // Function to add data into the heap
-fn push_heap(heap: &mut Vec<Option<Box<Task>>>, task: Task) -> Result<(), ()> {
+fn push_heap(heap: &mut Vec<Option<Box<Task>>>, task: Task) -> Result<(), String> {
     heap.push(Some(Box::new(task)));
     heap_up(heap)?;
     Ok(())
@@ -87,7 +91,7 @@ fn search_heap_by_name(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> 
 }
 
 // Function to run heap up
-fn heap_up(heap: &mut Vec<Option<Box<Task>>>) -> Result<(), ()> {
+fn heap_up(heap: &mut Vec<Option<Box<Task>>>) -> Result<(), String> {
     let mut index: usize = heap.len() - 1;
     let mut parent_index: usize;
     while index > 0 {
@@ -202,6 +206,29 @@ fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> Result<(), 
     Ok(())
 }
 
+// Function to read from file and update the heap
+fn init_heap_from_file(state: &AppState) -> Result<(), String> {
+    let mut heap = state.heap.lock().unwrap();
+    let mut file = File::open(FILE_PATH).unwrap();
+    let mut buffer = String::new();
+    let _ = file.read_to_string(&mut buffer);
+    let lines: Vec<&str> = buffer.split("\n").collect();
+    for line in lines {
+        let params: Vec<&str> = line.split(",").collect();
+        let task: Task = Task {
+            _name: params[0].to_string(),
+            _date: params[1].to_string(),
+            _category: params[2].to_string(),
+            _completion_time: params[3].parse::<u32>().unwrap(),
+            _priority: params[4].parse::<u32>().unwrap(),
+        };
+        push_heap(&mut heap, task)?;
+    }
+    println!("{}", buffer);
+    print_heap(&heap);
+    Ok(())
+}
+
 // State struct to hold the heap
 struct AppState {
     heap: std::sync::Mutex<Vec<Option<Box<Task>>>>, // Using Mutex for thread safety
@@ -220,6 +247,8 @@ fn main() {
     let app_state = AppState {
         heap: std::sync::Mutex::new(heap),
     };
+
+    init_heap_from_file(&app_state).expect("msg");
 
     tauri::Builder::default()
         .manage(app_state) // Manage app state
