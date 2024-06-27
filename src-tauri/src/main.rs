@@ -2,7 +2,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use chrono::{Duration, Local, NaiveDate};
-use core::iter::Enumerate;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -43,12 +42,10 @@ fn add_task_to_file(
     // Push task to heap
     let mut heap = state.heap.lock().unwrap();
     push_heap(&mut heap, task)?;
-    heap_up(&mut heap)?;
-
     // Write to file
     let string_to_write = format!("{},{},{},{}\n", name, date, category, completion_time);
     let mut file = File::options()
-        .append(true)
+        .append(false)
         .open(FILE_PATH)
         .expect("Unable to open file for writing");
     file.write_all(string_to_write.as_bytes())
@@ -59,15 +56,25 @@ fn add_task_to_file(
     Ok(String::from("All Good"))
 }
 
+#[tauri::command]
+fn delete_task(
+    name: String,
+    state: tauri::State<AppState>,
+) -> Result<(), String> {
+    let mut heap = state.heap.lock().unwrap();
+    pop_heap(&mut heap, name);
+    Ok(())
+}
+
 // Function to add data into the heap
 fn push_heap(heap: &mut Vec<Option<Box<Task>>>, task: Task) -> Result<(), ()> {
     heap.push(Some(Box::new(task)));
+    heap_up(heap)?;
     Ok(())
 }
 
 // Function to search a task in heap by name
-fn search_heap_by_name(heap: Vec<Option<Box<Task>>>, task_name: String) -> Option<usize> {
-    let mut index: usize = 0;
+fn search_heap_by_name(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> Option<usize> {
     for (index, i) in heap.iter().enumerate() {
         if let Some(task) = i {
             if task._name == task_name {
@@ -76,11 +83,6 @@ fn search_heap_by_name(heap: Vec<Option<Box<Task>>>, task_name: String) -> Optio
         }
     }
     None
-}
-
-// Function to remove from heap
-fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) {
-
 }
 
 // Function to run heap up
@@ -92,10 +94,10 @@ fn heap_up(heap: &mut Vec<Option<Box<Task>>>) -> Result<(), ()> {
         if let Some(parent_task) = heap[parent_index].as_ref() {
             if let Some(child_task) = heap[index].as_ref() {
                 if parent_task._priority > child_task._priority {
-                    heap.swap( parent_index, index);
+                    heap.swap(parent_index, index);
                 } else if parent_task._priority == child_task._priority {
                     if parent_task._completion_time >= child_task._completion_time {
-                        heap.swap( parent_index, index);
+                        heap.swap(parent_index, index);
                     }
                 }
             }
@@ -105,8 +107,49 @@ fn heap_up(heap: &mut Vec<Option<Box<Task>>>) -> Result<(), ()> {
     Ok(())
 }
 
+// Function to run heap down
+fn heap_down(heap: &mut Vec<Option<Box<Task>>>, mut index: usize) -> Result<(), ()> {
+    let len = heap.len();
+    loop {
+        let mut smallest = index;
+        let left_child = 2 * index + 1;
+        let right_child = 2 * index + 2;
+        // Check if left child exists and is smaller than the current node
+        if left_child < len {
+            if let (Some(parent_task), Some(left_task)) = (&heap[smallest], &heap[left_child]) {
+                if left_task._priority < parent_task._priority
+                    || (left_task._priority == parent_task._priority
+                        && left_task._completion_time < parent_task._completion_time)
+                {
+                    smallest = left_child;
+                }
+            }
+        }
+        // Check if right child exists and is smaller than the current smallest node
+        if right_child < len {
+            if let (Some(smallest_task), Some(right_task)) = (&heap[smallest], &heap[right_child]) {
+                if right_task._priority < smallest_task._priority
+                    || (right_task._priority == smallest_task._priority
+                        && right_task._completion_time < smallest_task._completion_time)
+                {
+                    smallest = right_child;
+                }
+            }
+        }
+        // If the smallest is not the current index, swap and continue
+        if smallest != index {
+            heap.swap(index, smallest);
+            index = smallest;
+        } else {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
 // Function to calculate priority
-// Priority is determined by the number of days left for the deadline of the task
+// Priority is determined by the number of days left for the deadline of the task (low number = high priority)
 fn calculate_priority(year: &str, month: &str, day: &str) -> u32 {
     let date = NaiveDate::from_ymd_opt(
         year.parse::<i32>().unwrap(),
@@ -139,6 +182,16 @@ fn print_heap(heap: &Vec<Option<Box<Task>>>) {
             println!("{}", v._name);
         }
     }
+}
+
+// Function to remove from heap
+fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> Result<(),()> {
+    let last_index = heap.len() - 1;
+    let index_to_pop = search_heap_by_name(heap, task_name).unwrap();
+    heap.swap(index_to_pop, last_index);
+    heap.pop();
+    heap_down(heap, index_to_pop).expect("Error in heap down!");
+    Ok(())
 }
 
 // State struct to hold the heap
