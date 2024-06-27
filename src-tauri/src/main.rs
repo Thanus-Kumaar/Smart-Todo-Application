@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use chrono::{Duration, Local, NaiveDate};
+use core::iter::Enumerate;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -62,6 +63,24 @@ fn add_task_to_file(
 fn push_heap(heap: &mut Vec<Option<Box<Task>>>, task: Task) -> Result<(), ()> {
     heap.push(Some(Box::new(task)));
     Ok(())
+}
+
+// Function to search a task in heap by name
+fn search_heap_by_name(heap: Vec<Option<Box<Task>>>, task_name: String) -> Option<usize> {
+    let mut index: usize = 0;
+    for (index, i) in heap.iter().enumerate() {
+        if let Some(task) = i {
+            if task._name == task_name {
+                return Some(index);
+            }
+        }
+    }
+    None
+}
+
+// Function to remove from heap
+fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) {
+
 }
 
 // Function to run heap up
