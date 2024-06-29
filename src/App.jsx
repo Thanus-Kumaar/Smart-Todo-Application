@@ -1,10 +1,14 @@
 import { useState } from "react";
 import "./App.css";
 import AddTask from "./components/AddTask";
+import { IoMdAdd } from "react-icons/io";
+import { listen } from "@tauri-apps/api/event";
+
 
 function App() {
   const [deletionName, setDelName] = useState("");
   const [addTaskOpen, setAddTaskOpen] = useState(false);
+  const [heap, setHeap] = useState();
 
   async function deleteTask() {
     try {
@@ -17,6 +21,11 @@ function App() {
     }
   }
 
+  listen("heap_data", (event)=>{
+    setHeap(event.payload);
+    console.log("Heap data:",event.payload);
+  })
+
   return (
     <div className="bg-black flex flex-col gap-8">
       <h1>Welcome to Tauri!</h1>
@@ -24,9 +33,9 @@ function App() {
         onClick={() => {
           setAddTaskOpen(true);
         }}
-        className="bg-white p-2"
+        className="bg-white p-2 w-fit rounded-full absolute bottom-8 right-8"
       >
-        Add Task
+        <IoMdAdd className="h-8 w-8" />
       </button>
       <AddTask open={addTaskOpen} setOpen={setAddTaskOpen} />
       <form

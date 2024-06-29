@@ -2,6 +2,8 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use chrono::{Duration, Local, NaiveDate};
+use serde::Serialize;
+use tauri::{App, AppHandle, Manager, Window};
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -10,7 +12,7 @@ use std::path::Path;
 static FILE_PATH: &str = "C:/Users/Tanushkumaaar/OneDrive/Desktop/Tasks.txt";
 
 // struct defining the task
-#[derive(Debug)]
+#[derive(Serialize, Clone,Debug)]
 struct Task {
     _name: String,
     _date: String,
@@ -27,6 +29,7 @@ fn add_task_to_file(
     category: String,
     completion_time: u32,
     state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<String, String> {
     // validating the parameters
     if name == "" || date == "" || category == "" || completion_time == 0 {
@@ -47,7 +50,10 @@ fn add_task_to_file(
     let mut heap = state.heap.lock().unwrap();
     push_heap(&mut heap, task)?;
     // Write to file
-    let string_to_write = format!("{},{},{},{},{}\n", name, date, category, completion_time, priority);
+    let string_to_write = format!(
+        "{},{},{},{},{}\n",
+        name, date, category, completion_time, priority
+    );
     let mut file = File::options()
         .write(true)
         .truncate(true)
@@ -59,6 +65,16 @@ fn add_task_to_file(
     println!("HEAP:");
     print_heap(&heap);
 
+    let serializable_heap: Vec<Option<Task>> = heap.iter()
+        .map(|opt_box_task| {
+            opt_box_task.as_ref().map(|boxed_task| (**boxed_task).clone())
+        })
+        .collect();
+    
+    // Emit the data
+    if let Err(e) = app_handle.emit_all("heap_data", serializable_heap) {
+        eprintln!("Failed to emit heap data: {:?}", e);
+    }
     Ok(String::from("All Good"))
 }
 
@@ -214,15 +230,17 @@ fn init_heap_from_file(state: &AppState) -> Result<(), String> {
     let _ = file.read_to_string(&mut buffer);
     let lines: Vec<&str> = buffer.split("\n").collect();
     for line in lines {
-        let params: Vec<&str> = line.split(",").collect();
-        let task: Task = Task {
-            _name: params[0].to_string(),
-            _date: params[1].to_string(),
-            _category: params[2].to_string(),
-            _completion_time: params[3].parse::<u32>().unwrap(),
-            _priority: params[4].parse::<u32>().unwrap(),
-        };
-        push_heap(&mut heap, task)?;
+        if line != "" {
+            let params: Vec<&str> = line.split(",").collect();
+            let task: Task = Task {
+                _name: params[0].to_string(),
+                _date: params[1].to_string(),
+                _category: params[2].to_string(),
+                _completion_time: params[3].parse::<u32>().unwrap(),
+                _priority: params[4].parse::<u32>().unwrap(),
+            };
+            push_heap(&mut heap, task)?;
+        }
     }
     println!("{}", buffer);
     print_heap(&heap);
