@@ -3,7 +3,7 @@ import "./App.css";
 import AddTask from "./components/AddTask";
 import { IoMdAdd } from "react-icons/io";
 import { listen } from "@tauri-apps/api/event";
-
+import { invoke } from "@tauri-apps/api/tauri";
 
 function App() {
   const [deletionName, setDelName] = useState("");
@@ -21,14 +21,26 @@ function App() {
     }
   }
 
-  listen("heap_data", (event)=>{
+  listen("heap_data", (event) => {
     setHeap(event.payload);
-    console.log("Heap data:",event.payload);
-  })
+    console.log("Heap data:", event.payload);
+  });
 
   return (
-    <div className="bg-black flex flex-col gap-8">
+    <div className="bg-slate-400 flex flex-col gap-8 h-screen overflow-scroll">
       <h1>Welcome to Tauri!</h1>
+      <div className="bg-white">
+        <div>Tasks :</div>
+        <div>
+          { heap!=undefined && heap.length > 0 ? (
+            heap.map((element, index) => (
+              <div>{element._name}</div>
+            ))
+          ) : (
+            <p>No task available!</p>
+          )}
+        </div>
+      </div>
       <button
         onClick={() => {
           setAddTaskOpen(true);

@@ -3,16 +3,16 @@
 
 use chrono::{Duration, Local, NaiveDate};
 use serde::Serialize;
-use tauri::{App, AppHandle, Manager, Window};
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
+use tauri::{AppHandle, Manager};
 
 // declaring constants
 static FILE_PATH: &str = "C:/Users/Tanushkumaaar/OneDrive/Desktop/Tasks.txt";
 
 // struct defining the task
-#[derive(Serialize, Clone,Debug)]
+#[derive(Serialize, Clone, Debug)]
 struct Task {
     _name: String,
     _date: String,
@@ -64,27 +64,39 @@ fn add_task_to_file(
 
     println!("HEAP:");
     print_heap(&heap);
-
-    let serializable_heap: Vec<Option<Task>> = heap.iter()
-        .map(|opt_box_task| {
-            opt_box_task.as_ref().map(|boxed_task| (**boxed_task).clone())
-        })
-        .collect();
-    
-    // Emit the data
-    if let Err(e) = app_handle.emit_all("heap_data", serializable_heap) {
-        eprintln!("Failed to emit heap data: {:?}", e);
-    }
+    send_heap_to_frontend(app_handle, &heap);
     Ok(String::from("All Good"))
 }
 
 #[tauri::command]
-fn delete_task(name: String, state: tauri::State<AppState>) -> Result<(), String> {
+fn delete_task(
+    name: String,
+    state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
     let mut heap = state.heap.lock().unwrap();
     pop_heap(&mut heap, name).map_err(|e| format!("Error occurred: {}", e))?;
     println!("HEAP:");
     print_heap(&heap);
+    send_heap_to_frontend(app_handle, &heap);
     Ok(())
+}
+
+// Function to send heap from backend to frontend
+fn send_heap_to_frontend(app_handle: AppHandle, heap: &Vec<Option<Box<Task>>>) {
+    let serializable_heap: Vec<Option<Task>> = heap
+        .iter()
+        .map(|opt_box_task| {
+            opt_box_task
+                .as_ref()
+                .map(|boxed_task| (**boxed_task).clone())
+        })
+        .collect();
+
+    // Emit the data
+    if let Err(e) = app_handle.emit_all("heap_data", serializable_heap) {
+        eprintln!("Failed to emit heap data: {:?}", e);
+    }
 }
 
 // Function to add data into the heap
