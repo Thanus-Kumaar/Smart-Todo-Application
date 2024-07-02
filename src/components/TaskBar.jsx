@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { RiDeleteBin6Line } from "react-icons/ri";
+import { SiTicktick } from "react-icons/si";
 import { Dialog } from "@mui/material";
 import { invoke } from "@tauri-apps/api/tauri";
 
@@ -11,49 +12,116 @@ export default function TaskBar({ heapData, setHeapData }) {
     setOpen(false);
   };
 
+  const [toDelete, setToDelete] = useState(false);
+
   async function deleteTask() {
     try {
       const response = await invoke("delete_task", {
         name: deleteTaskName,
       });
       console.log(response);
-      handleClose()
+      handleClose();
     } catch (error) {
       console.error("Error invoking command:", error);
-      handleClose()
+      handleClose();
     }
   }
 
-  useEffect(()=>{
-    console.log(deleteTaskName)
-  },[deleteTaskName])
+  function convertToDate(date) {
+    let dateString = "";
+    let dateList = date.split("-");
+    console.log(dateList);
+    switch (dateList[1]) {
+      case "01":
+        dateString = dateList[2] + " Jan " + dateList[0];
+        break;
+      case "02":
+        dateString = dateList[2] + " Feb " + dateList[0];
+        break;
+      case "03":
+        dateString = dateList[2] + " Mar " + dateList[0];
+        break;
+      case "04":
+        dateString = dateList[2] + " Apr " + dateList[0];
+        break;
+      case "05":
+        dateString = dateList[2] + " May " + dateList[0];
+        break;
+      case "06":
+        dateString = dateList[2] + " Jun " + dateList[0];
+        break;
+      case "07":
+        dateString = dateList[2] + " Jly " + dateList[0];
+        break;
+      case "08":
+        dateString = dateList[2] + " Aug " + dateList[0];
+        break;
+      case "09":
+        dateString = dateList[2] + " Sep " + dateList[0];
+        break;
+      case "10":
+        dateString = dateList[2] + " Oct " + dateList[0];
+        break;
+      case "11":
+        dateString = dateList[2] + " Nov " + dateList[0];
+        break;
+      case "12":
+        dateString = dateList[2] + " Dec " + dateList[0];
+        break;
+    }
+    return dateString;
+  }
+
+  useEffect(() => {
+    console.log(deleteTaskName);
+  }, [deleteTaskName]);
 
   return (
-    <div className="bg-white p-4">
-      <Dialog open={open} onClose={handleClose}
-      className=""
-      >
-        Are you sure, do you want to delete {deleteTaskName} ?
-        <button onClick={deleteTask}>Yes</button>
-        <button onClick={handleClose}>No</button>
+    <div className="bg-blue-400 p-4">
+      <Dialog open={open} onClose={handleClose}>
+        <div className="p-4 flex flex-col">
+          <div>Are you sure, do you want to {toDelete?"delete ":"mark "} <b>{deleteTaskName}</b> {toDelete?"":" as completed"} ?</div>
+          <div className="w-full p-4 flex flex-row justify-evenly">
+            <button onClick={deleteTask} className="bg-green-400 px-6 py-2 rounded-md">Yes</button>
+            <button onClick={handleClose} className="bg-red-400 px-6 py-2 rounded-md">No</button>
+          </div>
+        </div>
       </Dialog>
-      <div>Tasks :</div>
+      <div className="p-2 italic font-semibold text-[25px] ">CURRENT TASKS</div>
       <div className="flex flex-col gap-4">
         {heapData != undefined && heapData.length > 0 ? (
           heapData.map((element, index) => (
             <div
               key={index}
-              className="flex flex-row justify-between px-2 bg-emerald-300 rounded-md"
+              className="flex flex-row justify-between px-2 bg-blue-200 rounded-md hover:scale-[1.01] transition duration-75"
             >
-              <div className="p-2">{element._name}</div>
-              <div
-                className="text-center flex justify-center align-middle h-full"
-                onClick={() => {
-                  setDeleteTaskName(element._name);
-                  setOpen(true)
-                }}
-              >
-                <RiDeleteBin6Line className="w-5 h-5 mt-2 mr-2" />
+              <div className="flex flex-col gap-0 p-2">
+                <div className="text-lg">{element._name}</div>
+                <div className="text-xs italic">
+                  {convertToDate(element._date)}
+                </div>
+              </div>
+              <div className="flex flex-row gap-4">
+                <div
+                  className="text-center flex justify-center align-middle h-full hover:scale-[1.2] transition duration-100"
+                  onClick={() => {
+                    setToDelete(false);
+                    setDeleteTaskName(element._name);
+                    setOpen(true);
+                  }}
+                >
+                  <SiTicktick className="w-5 h-5 mt-5 mr-2" />
+                </div>
+                <div
+                  className="text-center flex justify-center align-middle h-full hover:scale-[1.2] transition duration-100"
+                  onClick={() => {
+                    setToDelete(true);
+                    setDeleteTaskName(element._name);
+                    setOpen(true);
+                  }}
+                >
+                  <RiDeleteBin6Line className="w-6 h-6 mt-4 mr-2" />
+                </div>
               </div>
             </div>
           ))

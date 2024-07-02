@@ -33,8 +33,8 @@ function App() {
   },[])
 
   return (
-    <div className="bg-slate-400 flex flex-col gap-8 h-screen overflow-scroll">
-      <h1>Welcome to Tauri!</h1>
+    <div className="bg-blue-400 flex flex-col gap-8 h-screen overflow-scroll removeScrollBar">
+      <div className="text-[30px] mt-4 text-center font-semibold">Smart Task Tracker</div>
       <Tasks heapData={heap} setHeapData={setHeap}/>
       <button
         onClick={() => {
