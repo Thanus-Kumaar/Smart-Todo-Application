@@ -82,9 +82,41 @@ fn delete_task(
     Ok(())
 }
 
+// Function to edit task
+#[tauri::command]
+fn edit_task(
+    old_name: String,
+    name: String,
+    date: String,
+    category: String,
+    completion_time: u32,
+    state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    delete_task(old_name, state.clone(), app_handle.clone())?;
+    add_task_to_file(name, date, category, completion_time, state, app_handle)?;
+    Ok(())
+}
+
+// Function to send data of a particular task to frontend
+#[tauri::command]
+fn send_task_details(name: String, state: tauri::State<AppState>) -> Result<Option<Box<Task>>, String> {
+    let mut heap = state.heap.lock().unwrap();
+    let index = search_heap_by_name(&mut heap, name);
+    let index_to_send: usize = match index {
+        Some(index) => index,
+        None => return Err(String::from("Task name not found")),
+    };
+    let task_to_send = &heap[index_to_send];
+  Ok(task_to_send.clone())
+}
+
 // Function to read from file and update the heap
 #[tauri::command]
-fn init_heap_from_file(state: tauri::State<AppState>, app_handle: tauri::AppHandle) -> Result<(), String> {
+fn init_heap_from_file(
+    state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
     let mut heap = state.heap.lock().unwrap();
     let mut file = File::open(FILE_PATH).unwrap();
     let mut buffer = String::new();
@@ -283,7 +315,13 @@ fn main() {
 
     tauri::Builder::default()
         .manage(app_state) // Manage app state
-        .invoke_handler(tauri::generate_handler![add_task_to_file, delete_task, init_heap_from_file])
+        .invoke_handler(tauri::generate_handler![
+            add_task_to_file,
+            delete_task,
+            init_heap_from_file,
+            send_task_details,
+            edit_task
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
