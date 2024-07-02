@@ -82,6 +82,34 @@ fn delete_task(
     Ok(())
 }
 
+// Function to read from file and update the heap
+#[tauri::command]
+fn init_heap_from_file(state: tauri::State<AppState>, app_handle: tauri::AppHandle) -> Result<(), String> {
+    let mut heap = state.heap.lock().unwrap();
+    let mut file = File::open(FILE_PATH).unwrap();
+    let mut buffer = String::new();
+    let _ = file.read_to_string(&mut buffer);
+    let lines: Vec<&str> = buffer.split("\n").collect();
+    for line in lines {
+        if line != "" {
+            let params: Vec<&str> = line.split(",").collect();
+            let task: Task = Task {
+                _name: params[0].to_string(),
+                _date: params[1].to_string(),
+                _category: params[2].to_string(),
+                _completion_time: params[3].parse::<u32>().unwrap(),
+                _priority: params[4].parse::<u32>().unwrap(),
+            };
+            pop_heap(&mut heap, params[0].to_string())?;
+            push_heap(&mut heap, task)?;
+        }
+    }
+    println!("{}", buffer);
+    send_heap_to_frontend(app_handle, &heap);
+    print_heap(&heap);
+    Ok(())
+}
+
 // Function to send heap from backend to frontend
 fn send_heap_to_frontend(app_handle: AppHandle, heap: &Vec<Option<Box<Task>>>) {
     let serializable_heap: Vec<Option<Task>> = heap
@@ -234,31 +262,6 @@ fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> Result<(), 
     Ok(())
 }
 
-// Function to read from file and update the heap
-fn init_heap_from_file(state: &AppState) -> Result<(), String> {
-    let mut heap = state.heap.lock().unwrap();
-    let mut file = File::open(FILE_PATH).unwrap();
-    let mut buffer = String::new();
-    let _ = file.read_to_string(&mut buffer);
-    let lines: Vec<&str> = buffer.split("\n").collect();
-    for line in lines {
-        if line != "" {
-            let params: Vec<&str> = line.split(",").collect();
-            let task: Task = Task {
-                _name: params[0].to_string(),
-                _date: params[1].to_string(),
-                _category: params[2].to_string(),
-                _completion_time: params[3].parse::<u32>().unwrap(),
-                _priority: params[4].parse::<u32>().unwrap(),
-            };
-            push_heap(&mut heap, task)?;
-        }
-    }
-    println!("{}", buffer);
-    print_heap(&heap);
-    Ok(())
-}
-
 // State struct to hold the heap
 struct AppState {
     heap: std::sync::Mutex<Vec<Option<Box<Task>>>>, // Using Mutex for thread safety
@@ -278,11 +281,9 @@ fn main() {
         heap: std::sync::Mutex::new(heap),
     };
 
-    init_heap_from_file(&app_state).expect("msg");
-
     tauri::Builder::default()
         .manage(app_state) // Manage app state
-        .invoke_handler(tauri::generate_handler![add_task_to_file, delete_task])
+        .invoke_handler(tauri::generate_handler![add_task_to_file, delete_task, init_heap_from_file])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

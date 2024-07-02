@@ -1,4 +1,4 @@
-import { Dialog, Hidden } from "@mui/material";
+import { Dialog } from "@mui/material";
 import {Alert} from "@mui/material";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";

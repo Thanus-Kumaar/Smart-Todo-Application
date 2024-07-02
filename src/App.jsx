@@ -1,46 +1,41 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import "./App.css";
 import AddTask from "./components/AddTask";
+import Tasks from "./components/TaskBar";
 import { IoMdAdd } from "react-icons/io";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
 
 function App() {
-  const [deletionName, setDelName] = useState("");
   const [addTaskOpen, setAddTaskOpen] = useState(false);
   const [heap, setHeap] = useState();
-
-  async function deleteTask() {
-    try {
-      const response = await invoke("delete_task", {
-        name: deletionName,
-      });
-      console.log(response);
-    } catch (error) {
-      console.error("Error invoking command:", error);
-    }
-  }
+  const [initCount, setInitCount] = useState(0);
 
   listen("heap_data", (event) => {
     setHeap(event.payload);
     console.log("Heap data:", event.payload);
   });
 
+  async function init_heap(){
+    try {
+      const response = await invoke("init_heap_from_file");
+      console.log(response);
+    } catch (error) {
+      console.error("Error invoking command:", error);
+    }
+  }
+
+  useEffect(()=>{
+    if(initCount == 0){
+      init_heap()
+      setInitCount(1);
+    }
+  },[])
+
   return (
     <div className="bg-slate-400 flex flex-col gap-8 h-screen overflow-scroll">
       <h1>Welcome to Tauri!</h1>
-      <div className="bg-white">
-        <div>Tasks :</div>
-        <div>
-          { heap!=undefined && heap.length > 0 ? (
-            heap.map((element, index) => (
-              <div>{element._name}</div>
-            ))
-          ) : (
-            <p>No task available!</p>
-          )}
-        </div>
-      </div>
+      <Tasks heapData={heap} setHeapData={setHeap}/>
       <button
         onClick={() => {
           setAddTaskOpen(true);
@@ -50,28 +45,6 @@ function App() {
         <IoMdAdd className="h-8 w-8" />
       </button>
       <AddTask open={addTaskOpen} setOpen={setAddTaskOpen} />
-      <form
-        className="flex flex-row w-[60%] mx-auto gap-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          deleteTask();
-        }}
-      >
-        <input
-          type="text"
-          className="p-2 rounded-md flex-1"
-          id="delete-name"
-          placeholder="Enter Name to delete"
-          onChange={(e) => setDelName(e.target.value)}
-          value={deletionName}
-        />
-        <button
-          className="bg-white p-3 w-28 text-center mx-auto rounded-md"
-          type="submit"
-        >
-          Delete
-        </button>
-      </form>
     </div>
   );
 }
