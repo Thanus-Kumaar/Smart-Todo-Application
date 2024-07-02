@@ -3,12 +3,7 @@ import {Alert} from "@mui/material";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 
-export default function ({ open, setOpen }) {
-  const [name, setName] = useState("");
-  const [category, setCategory] = useState("");
-  const [date, setDate] = useState("");
-  const [timeToConsume, setTime] = useState(0);
-
+export default function ({ open, setOpen, name, setName, category, setCategory, date, setDate, timeToConsume, setTime, isEdit, oldName }) {
   const [alertMsg, setAlertMsg] = useState("");
   const [alertType, setAlertType] = useState("");
   const [displayAlert, setDisplayAlert] = useState(false);
@@ -16,6 +11,33 @@ export default function ({ open, setOpen }) {
   const handleClose = () => {
     setOpen(false);
   };
+  
+  async function editTask() {
+    try {
+      const response = await invoke("edit_task", {
+        oldName: oldName,
+        name: name,
+        date: date,
+        category: category,
+        completionTime: parseInt(timeToConsume, 10),
+      });
+      console.log(response);
+      setAlertMsg("Added task successfully !");
+      setAlertType("success");
+      setDisplayAlert(true);
+      setTimeout(()=>{
+        setDisplayAlert(false); 
+      },3000)
+    } catch (error) {
+      console.error("Error invoking command:", error);
+      setAlertMsg(error);
+      setAlertType("error");
+      setDisplayAlert(true);
+      setTimeout(()=>{
+        setDisplayAlert(false); 
+      },3000)
+    }
+  }
 
   async function addToFile() {
     try {
@@ -49,30 +71,33 @@ export default function ({ open, setOpen }) {
       className=""
       >
         <Alert severity={alertType} style={{ display: displayAlert == false ? "none" : "" }}>{alertMsg}</Alert>
-        <div className="p-4 w-[500px]">
-          <div className="text-xl text-center mb-4">Add Task</div>
+        <div className="p-4 w-[500px] bg-blue-200">
+          <div className="text-xl text-center mb-4">{isEdit?"Edit Task":"Add Task"}</div>
           <form
             className="flex flex-col mx-auto gap-3"
             onSubmit={(e) => {
               e.preventDefault();
-              addToFile();
+              isEdit?editTask():addToFile();
             }}
           >
             <input
               className="p-2 rounded-md m-2 bg-slate-200 border-[1px] border-black"
               id="task-name"
+              value={name}
               onChange={(e) => setName(e.currentTarget.value)}
               placeholder="Task Name"
             />
             <input
               className="p-2 rounded-md m-2 bg-slate-200 border-[1px] border-black"
               id="task-cat"
+              value={category}
               onChange={(e) => setCategory(e.currentTarget.value)}
               placeholder="Category"
             />
             <input
               className="p-2 rounded-md m-2 bg-slate-200 border-[1px] border-black"
               id="due-date"
+              value={date}
               onChange={(e) => setDate(e.currentTarget.value)}
               type="date"
               placeholder="Due Date"
@@ -84,6 +109,7 @@ export default function ({ open, setOpen }) {
               className="px-2 mt-0 rounded-md m-2"
               id="task-comp-time"
               name="task-comp-time"
+              value={timeToConsume}
               type="range"
               max={10}
               min={1}
@@ -93,7 +119,7 @@ export default function ({ open, setOpen }) {
               className="bg-blue-500 text-white p-3 w-28 text-center mx-auto rounded-md"
               type="submit"
             >
-              Add
+              {isEdit?"Edit":"Add"}
             </button>
           </form>
         </div>

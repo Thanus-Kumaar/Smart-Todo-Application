@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import { SiTicktick } from "react-icons/si";
+import { CiEdit } from "react-icons/ci";
 import { Dialog } from "@mui/material";
 import { invoke } from "@tauri-apps/api/tauri";
+import AddTask from "./AddTask";
 
 export default function TaskBar({ heapData, setHeapData }) {
   const [deleteTaskName, setDeleteTaskName] = useState("");
@@ -11,6 +13,16 @@ export default function TaskBar({ heapData, setHeapData }) {
   const handleClose = () => {
     setOpen(false);
   };
+  const [openEdit, setOpenEdit] = useState(false);
+  const handleEditClose = () => {
+    setOpenEdit(false);
+  };
+
+  const [name, setName] = useState("");
+  const [category, setCategory] = useState("");
+  const [date, setDate] = useState("");
+  const [timeToConsume, setTime] = useState(0);
+  const [oldName, setOldName] = useState("");
 
   const [toDelete, setToDelete] = useState(false);
 
@@ -24,6 +36,22 @@ export default function TaskBar({ heapData, setHeapData }) {
     } catch (error) {
       console.error("Error invoking command:", error);
       handleClose();
+    }
+  }
+
+  async function getEditDetails(editTaskName) {
+    try {
+      const response = await invoke("send_task_details", {
+        name: editTaskName,
+      });
+      console.log(response);
+      setName(response._name);
+      setDate(response._date);
+      setTime(response._completion_time);
+      setCategory(response._category);
+      setOpenEdit(true);
+    } catch (error) {
+      console.error("Error invoking command:", error);
     }
   }
 
@@ -80,13 +108,40 @@ export default function TaskBar({ heapData, setHeapData }) {
     <div className="bg-blue-400 p-4">
       <Dialog open={open} onClose={handleClose}>
         <div className="p-4 flex flex-col">
-          <div>Are you sure, do you want to {toDelete?"delete ":"mark "} <b>{deleteTaskName}</b> {toDelete?"":" as completed"} ?</div>
+          <div>
+            Are you sure, do you want to {toDelete ? "delete " : "mark "}{" "}
+            <b>{deleteTaskName}</b> {toDelete ? "" : " as completed"} ?
+          </div>
           <div className="w-full p-4 flex flex-row justify-evenly">
-            <button onClick={deleteTask} className="bg-green-400 px-6 py-2 rounded-md">Yes</button>
-            <button onClick={handleClose} className="bg-red-400 px-6 py-2 rounded-md">No</button>
+            <button
+              onClick={deleteTask}
+              className="bg-green-400 px-6 py-2 rounded-md"
+            >
+              Yes
+            </button>
+            <button
+              onClick={handleClose}
+              className="bg-red-400 px-6 py-2 rounded-md"
+            >
+              No
+            </button>
           </div>
         </div>
       </Dialog>
+      <AddTask
+        open={openEdit}
+        setOpen={setOpenEdit}
+        name={name}
+        setName={setName}
+        category={category}
+        setCategory={setCategory}
+        date={date}
+        setDate={setDate}
+        timeToConsume={timeToConsume}
+        setTime={setTime}
+        isEdit={true}
+        oldName={oldName}
+      />
       <div className="p-2 italic font-semibold text-[25px] ">CURRENT TASKS</div>
       <div className="flex flex-col gap-4">
         {heapData != undefined && heapData.length > 0 ? (
@@ -102,6 +157,15 @@ export default function TaskBar({ heapData, setHeapData }) {
                 </div>
               </div>
               <div className="flex flex-row gap-4">
+                <div
+                  className="text-center flex justify-center align-middle h-full hover:scale-[1.2] transition duration-100"
+                  onClick={() => {
+                    setOldName(element._name);
+                    getEditDetails(element._name);
+                  }}
+                >
+                  <CiEdit className="w-7 h-7 mt-4 mr-2" />
+                </div>
                 <div
                   className="text-center flex justify-center align-middle h-full hover:scale-[1.2] transition duration-100"
                   onClick={() => {
