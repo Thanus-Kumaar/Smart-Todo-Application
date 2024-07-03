@@ -144,18 +144,50 @@ fn init_heap_from_file(
 
 // Function to send heap from backend to frontend
 fn send_heap_to_frontend(app_handle: AppHandle, heap: &Vec<Option<Box<Task>>>) {
-    let serializable_heap: Vec<Option<Task>> = heap
-        .iter()
-        .map(|opt_box_task| {
-            opt_box_task
-                .as_ref()
-                .map(|boxed_task| (**boxed_task).clone())
-        })
-        .collect();
-
+    let mut serializable_heap: Vec<Option<Box<Task>>> = Vec::new();
+    priority_traverse(heap, &mut serializable_heap, 0);
+    println!("NEW HEAP: ");
+    print_heap(&serializable_heap);
     // Emit the data
     if let Err(e) = app_handle.emit_all("heap_data", serializable_heap) {
         eprintln!("Failed to emit heap data: {:?}", e);
+    }
+}
+
+// Function to traverse heap in priority order
+fn priority_traverse(heap: &Vec<Option<Box<Task>>>, new_heap: & mut Vec<Option<Box<Task>>>, index: usize) {
+    new_heap.push(heap[index].clone());
+    let left_index: usize = 2*index + 1;
+    let right_index: usize = 2*index + 2;
+    println!("length:{}",heap.len());
+    if left_index < heap.len() && right_index >= heap.len() {
+        priority_traverse(heap, new_heap, left_index);
+        return ();
+    }
+    else if left_index >= heap.len() || right_index >= heap.len() {
+        println!("1");
+        return ();
+    }
+    if heap[left_index].as_ref().unwrap()._priority < heap[right_index].as_ref().unwrap()._priority {
+        println!("2");
+        priority_traverse(heap, new_heap, left_index);
+        priority_traverse(heap, new_heap, right_index);
+    }
+    else if heap[left_index].as_ref().unwrap()._priority > heap[right_index].as_ref().unwrap()._priority {
+        println!("3");
+        priority_traverse(heap, new_heap, right_index);
+        priority_traverse(heap, new_heap, left_index);
+    }
+    else{
+        println!("4");
+        if heap[left_index].as_ref().unwrap()._completion_time < heap[right_index].as_ref().unwrap()._completion_time {
+            priority_traverse(heap, new_heap, left_index);
+            priority_traverse(heap, new_heap, right_index);
+        }
+        else if heap[left_index].as_ref().unwrap()._completion_time > heap[right_index].as_ref().unwrap()._completion_time {
+            priority_traverse(heap, new_heap, right_index);
+            priority_traverse(heap, new_heap, left_index);
+        }
     }
 }
 
