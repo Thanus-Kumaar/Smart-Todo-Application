@@ -153,13 +153,18 @@ export default function TaskBar({ heapData, setHeapData }) {
               <div className="flex flex-col gap-0 p-2">
                 <div className="text-lg">{element._name}</div>
                 <div className="text-xs italic">
-                  {convertToDate(element._date)}&nbsp;&nbsp;|&nbsp;&nbsp;{element._completion_time} hrs
+                  {convertToDate(element._date)}&nbsp;&nbsp;|&nbsp;&nbsp;
+                  {element._completion_time} hrs
                 </div>
               </div>
               <div className="flex flex-row gap-4">
                 <div
                   className="text-center flex justify-center align-middle h-full hover:scale-[1.2] transition duration-100"
                   onClick={() => {
+                    setName("");
+                    setDate("");
+                    setTime("");
+                    setCategory("");
                     setOldName(element._name);
                     getEditDetails(element._name);
                   }}
