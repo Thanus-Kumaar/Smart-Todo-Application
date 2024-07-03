@@ -153,7 +153,7 @@ export default function TaskBar({ heapData, setHeapData }) {
               <div className="flex flex-col gap-0 p-2">
                 <div className="text-lg">{element._name}</div>
                 <div className="text-xs italic">
-                  {convertToDate(element._date)}
+                  {convertToDate(element._date)}&nbsp;&nbsp;|&nbsp;&nbsp;{element._completion_time} hrs
                 </div>
               </div>
               <div className="flex flex-row gap-4">

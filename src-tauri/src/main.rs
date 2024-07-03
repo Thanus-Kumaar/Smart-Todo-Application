@@ -142,6 +142,20 @@ fn init_heap_from_file(
     Ok(())
 }
 
+#[tauri::command]
+ fn add_category_from_frontend(category_name: String, state: tauri::State<AppState>,) -> Result<(), String> {
+    let mut cat_list = state.category_list.lock().unwrap();
+    add_category(category_name, &mut cat_list);
+  Ok(())
+}
+
+#[tauri::command]
+ fn delete_category_from_frontend(category_name: String, state: tauri::State<AppState>,) -> Result<(), String> {
+    let mut cat_list = state.category_list.lock().unwrap();
+    delete_category(category_name, &mut cat_list)?;
+  Ok(())
+}
+
 // Function to send heap from backend to frontend
 fn send_heap_to_frontend(app_handle: AppHandle, heap: &Vec<Option<Box<Task>>>) {
     let mut serializable_heap: Vec<Option<Box<Task>>> = Vec::new();
@@ -326,9 +340,48 @@ fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> Result<(), 
     Ok(())
 }
 
+// Function to add categories into category name list
+fn add_category(cat_name: String, list: &mut Vec<String>) {
+    list.push(cat_name);
+    print_cat_list(list);
+}
+
+// Function to search for a category name
+fn search_category(cat_name: String, list: &mut Vec<String>) -> Option<usize> {
+    for (index, name) in list.iter().enumerate() {
+        if *name == cat_name {
+            return Some(index);
+        }
+    }
+    None
+}
+
+// Function to delete a category
+fn delete_category(cat_name: String, list: &mut Vec<String>) -> Result<(), String> {
+    if list.len() == 0{
+        return Ok(())
+    }
+    let i = search_category(cat_name, list);
+    let index = match i {
+        Some(i) => i,
+        None => return Err(String::from("Category name not found")),
+    };
+    list.remove(index);
+    print_cat_list(list);
+    Ok(())
+}
+ 
+// Function to print category list
+fn print_cat_list(list: &mut Vec<String>) {
+    for i in list.iter() {
+        println!("{}",i);
+    }
+}
+
 // State struct to hold the heap
 struct AppState {
     heap: std::sync::Mutex<Vec<Option<Box<Task>>>>, // Using Mutex for thread safety
+    category_list: std::sync::Mutex<Vec<String>>
 }
 
 // main function that runs the application loop
@@ -341,8 +394,10 @@ fn main() {
 
     // Initialize the heap
     let heap: Vec<Option<Box<Task>>> = Vec::new();
+    let categories: Vec<String> = Vec::new();
     let app_state = AppState {
         heap: std::sync::Mutex::new(heap),
+        category_list: std::sync::Mutex::new(categories),
     };
 
     tauri::Builder::default()
@@ -352,7 +407,9 @@ fn main() {
             delete_task,
             init_heap_from_file,
             send_task_details,
-            edit_task
+            edit_task,
+            add_category_from_frontend,
+            delete_category_from_frontend
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
