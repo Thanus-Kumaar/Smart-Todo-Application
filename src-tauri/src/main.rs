@@ -55,22 +55,10 @@ fn add_task_to_file(
 
     // Push task to heap
     push_heap(&mut heap, task)?;
-    // Write to file
-    let string_to_write = format!(
-        "{},{},{},{},{}\n",
-        name, date, category, completion_time, priority
-    );
-    let mut file = File::options()
-        .write(true)
-        .truncate(true)
-        .open(FILE_PATH)
-        .expect("Unable to open file for writing");
-    file.write_all(string_to_write.as_bytes())
-        .expect("Error writing into file!");
-
     println!("HEAP:");
     print_heap(&heap);
     send_heap_to_frontend(app_handle, &heap);
+    write_heap_to_file(&heap);
     Ok(String::from("All Good"))
 }
 
@@ -82,9 +70,9 @@ fn delete_task(
 ) -> Result<(), String> {
     let mut heap = state.heap.lock().unwrap();
     pop_heap(&mut heap, name).map_err(|e| format!("Error occurred: {}", e))?;
-    println!("HEAP:");
     print_heap(&heap);
     send_heap_to_frontend(app_handle, &heap);
+    write_heap_to_file(&heap);
     Ok(())
 }
 
@@ -132,6 +120,8 @@ fn init_heap_from_file(
     let _ = file.read_to_string(&mut buffer);
     let lines: Vec<&str> = buffer.split("\n").collect();
     for line in lines {
+        println!("{}", line);
+        let mut flag: usize = 0;
         if line != "" {
             let params: Vec<&str> = line.split(",").collect();
             let task: Task = Task {
@@ -141,7 +131,13 @@ fn init_heap_from_file(
                 _completion_time: params[3].parse::<u32>().unwrap(),
                 _priority: params[4].parse::<u32>().unwrap(),
             };
-            pop_heap(&mut heap, params[0].to_string())?;
+            let index = search_heap_by_name(&mut heap, params[0].to_string());
+            if let Some(_) = index {
+                flag = 1;
+            }
+            if flag == 1 {
+                pop_heap(&mut heap, params[0].to_string())?;
+            }
             push_heap(&mut heap, task)?;
         }
     }
@@ -181,9 +177,10 @@ fn add_category_from_frontend(
 fn delete_category_from_frontend(
     category_name: String,
     state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let mut cat_list = state.category_list.lock().unwrap();
-    delete_category(category_name, &mut cat_list)?;
+    delete_category(category_name, &mut cat_list, app_handle)?;
     Ok(())
 }
 
@@ -192,7 +189,6 @@ fn init_cat_list_from_file(
     state: tauri::State<AppState>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
-    
     Ok(())
 }
 
@@ -217,27 +213,22 @@ fn priority_traverse(
     new_heap.push(heap[index].clone());
     let left_index: usize = 2 * index + 1;
     let right_index: usize = 2 * index + 2;
-    println!("length:{}", heap.len());
     if left_index < heap.len() && right_index >= heap.len() {
         priority_traverse(heap, new_heap, left_index);
         return ();
     } else if left_index >= heap.len() || right_index >= heap.len() {
-        println!("1");
         return ();
     }
     if heap[left_index].as_ref().unwrap()._priority < heap[right_index].as_ref().unwrap()._priority
     {
-        println!("2");
         priority_traverse(heap, new_heap, left_index);
         priority_traverse(heap, new_heap, right_index);
     } else if heap[left_index].as_ref().unwrap()._priority
         > heap[right_index].as_ref().unwrap()._priority
     {
-        println!("3");
         priority_traverse(heap, new_heap, right_index);
         priority_traverse(heap, new_heap, left_index);
     } else {
-        println!("4");
         if heap[left_index].as_ref().unwrap()._completion_time
             < heap[right_index].as_ref().unwrap()._completion_time
         {
@@ -246,6 +237,9 @@ fn priority_traverse(
         } else if heap[left_index].as_ref().unwrap()._completion_time
             > heap[right_index].as_ref().unwrap()._completion_time
         {
+            priority_traverse(heap, new_heap, right_index);
+            priority_traverse(heap, new_heap, left_index);
+        } else {
             priority_traverse(heap, new_heap, right_index);
             priority_traverse(heap, new_heap, left_index);
         }
@@ -405,7 +399,11 @@ fn search_category(cat_name: String, list: &mut Vec<String>) -> Option<usize> {
 }
 
 // Function to delete a category
-fn delete_category(cat_name: String, list: &mut Vec<String>) -> Result<(), String> {
+fn delete_category(
+    cat_name: String,
+    list: &mut Vec<String>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
     if list.len() == 0 {
         return Ok(());
     }
@@ -415,6 +413,7 @@ fn delete_category(cat_name: String, list: &mut Vec<String>) -> Result<(), Strin
         None => return Err(String::from("Category name not found")),
     };
     list.remove(index);
+    send_category_to_frontend(app_handle, list);
     print_cat_list(list);
     Ok(())
 }
@@ -433,6 +432,35 @@ fn send_category_to_frontend(app_handle: AppHandle, list: &Vec<String>) {
         eprintln!("Failed to emit heap data: {:?}", e);
     }
     println!("Sent successfully")
+}
+
+// Function to write heap data to file
+fn write_heap_to_file(heap: &Vec<Option<Box<Task>>>) {
+    let mut name: String;
+    let mut date: String;
+    let mut category: String;
+    let mut completion_time: u32;
+    let mut priority: u32;
+    let mut file = File::options()
+        .write(true)
+        .truncate(true)
+        .open(FILE_PATH)
+        .expect("Unable to open file for writing");
+    for i in heap.iter() {
+        if let Some(task) = i {
+            name = task._name.clone();
+            category = task._category.clone();
+            date = task._date.clone();
+            completion_time = task._completion_time.clone();
+            priority = task._priority.clone();
+            let string_to_write = format!(
+                "{},{},{},{},{}\n",
+                name, date, category, completion_time, priority
+            );
+            file.write_all(string_to_write.as_bytes())
+                .expect("Error writing into file!");
+        }
+    }
 }
 
 // State struct to hold the heap

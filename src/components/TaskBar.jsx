@@ -137,8 +137,9 @@ export default function TaskBar({ heapData, setHeapData }) {
         isEdit={true}
         oldName={oldName}
       />
-      <div className="p-2 italic font-semibold text-[25px] ">CURRENT TASKS</div>
-      <div className="flex flex-col gap-4">
+      <div className="p-2 italic font-semibold text-[25px] text-center">CURRENT TASKS</div>
+      <hr className="border-black border"></hr>
+      <div className="flex flex-col gap-4 w-[90%] mx-auto mt-4">
         {heapData != undefined && heapData.length > 0 ? (
           heapData.map((element, index) => (
             <div
@@ -153,7 +154,7 @@ export default function TaskBar({ heapData, setHeapData }) {
                 </div>
               </div>
               <div className="flex flex-row gap-4">
-                <div
+                <button
                   className="text-center flex justify-center align-middle h-full hover:scale-[1.2] transition duration-100"
                   onClick={() => {
                     setName("");
@@ -165,8 +166,8 @@ export default function TaskBar({ heapData, setHeapData }) {
                   }}
                 >
                   <CiEdit className="w-7 h-7 mt-4 mr-2" />
-                </div>
-                <div
+                </button>
+                <button
                   className="text-center flex justify-center align-middle h-full hover:scale-[1.2] transition duration-100"
                   onClick={() => {
                     setToDelete(false);
@@ -175,8 +176,8 @@ export default function TaskBar({ heapData, setHeapData }) {
                   }}
                 >
                   <SiTicktick className="w-5 h-5 mt-5 mr-2" />
-                </div>
-                <div
+                </button>
+                <button
                   className="text-center flex justify-center align-middle h-full hover:scale-[1.2] transition duration-100"
                   onClick={() => {
                     setToDelete(true);
@@ -185,7 +186,7 @@ export default function TaskBar({ heapData, setHeapData }) {
                   }}
                 >
                   <RiDeleteBin6Line className="w-6 h-6 mt-4 mr-2" />
-                </div>
+                </button>
               </div>
             </div>
           ))

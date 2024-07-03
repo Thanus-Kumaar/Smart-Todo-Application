@@ -7,6 +7,7 @@ import { IoMdAdd } from "react-icons/io";
 import { TbCategory2 } from "react-icons/tb";
 import { MdOutlineAddTask } from "react-icons/md";
 import { IoMdClose } from "react-icons/io";
+import { IoCloseCircle } from "react-icons/io5";
 
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
@@ -43,7 +44,7 @@ function App() {
     } else {
       console.error("Received payload is not an array:", event.payload);
     }
-    console.log("Category data:", event.payload, typeof(event.payload));
+    console.log("Category data:", event.payload, typeof event.payload);
   });
 
   async function init_heap() {
@@ -66,6 +67,17 @@ function App() {
     }
   }
 
+  async function deleteCategory(catName) {
+    try {
+      const response = await invoke("delete_category_from_frontend", {
+        categoryName: catName,
+      });
+      console.log(response);
+    } catch (error) {
+      console.log("Error: ", error);
+    }
+  }
+
   useEffect(() => {
     if (initCount == 0) {
       init_heap();
@@ -74,11 +86,13 @@ function App() {
   }, []);
 
   return (
-    <div className="bg-blue-400 flex flex-col gap-8 h-screen overflow-scroll removeScrollBar">
-      <div className="text-[30px] mt-4 text-center font-semibold">
+    <div className="bg-blue-400 flex flex-col h-screen">
+      <div className="p-2 text-center font-semibold bg-blue-200">
         Smart Task Tracker
       </div>
-      <Tasks heapData={heap} setHeapData={setHeap} />
+      <div className=" overflow-scroll removeScrollBar">
+        <Tasks heapData={heap} setHeapData={setHeap} />
+      </div>
       <div className=" absolute bottom-8 right-8 flex flex-col gap-4">
         <div className={showAdd ? "flex flex-row gap-4" : "hidden"}>
           <button
@@ -161,9 +175,19 @@ function App() {
             </div>
           </form>
           <div className="text-center mt-10 font-bold">Current Categories</div>
-          <div>
+          <div className="flex flex-row gap-2 flex-wrap mt-4">
             {categoryList != undefined ? (
-              categoryList.map((category, index) => <div key={index}>{category}</div>)
+              categoryList.map((category, index) => (
+                <div
+                  className="bg-slate-200 rounded-full w-fit px-2 flex flex-row pl-2"
+                  key={index}
+                >
+                  <div>{category}</div>
+                  <div onClick={deleteCategory(category)}>
+                    <IoCloseCircle className="h-4 w-4 mt-1 cursor-pointer ml-2" />
+                  </div>
+                </div>
+              ))
             ) : (
               <div>No categories created!</div>
             )}
