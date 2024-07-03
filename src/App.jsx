@@ -37,6 +37,15 @@ function App() {
     console.log("Heap data:", event.payload);
   });
 
+  listen("category_data", (event) => {
+    if (Array.isArray(event.payload)) {
+      setCatList(event.payload);
+    } else {
+      console.error("Received payload is not an array:", event.payload);
+    }
+    console.log("Category data:", event.payload, typeof(event.payload));
+  });
+
   async function init_heap() {
     try {
       const response = await invoke("init_heap_from_file");
@@ -127,10 +136,11 @@ function App() {
       <Dialog open={openAddCat} onClose={handleCatClose}>
         <div className="p-6 w-80">
           <form
-          onSubmit={(e)=>{
-            e.preventDefault();
-            addCategory();
-          }}>
+            onSubmit={(e) => {
+              e.preventDefault();
+              addCategory();
+            }}
+          >
             <div className="flex flex-col gap-1">
               <label className="block text-sm" htmlFor="catName">
                 Category Name
@@ -151,6 +161,13 @@ function App() {
             </div>
           </form>
           <div className="text-center mt-10 font-bold">Current Categories</div>
+          <div>
+            {categoryList != undefined ? (
+              categoryList.map((category, index) => <div key={index}>{category}</div>)
+            ) : (
+              <div>No categories created!</div>
+            )}
+          </div>
         </div>
       </Dialog>
     </div>

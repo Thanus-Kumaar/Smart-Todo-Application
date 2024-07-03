@@ -58,7 +58,6 @@ export default function TaskBar({ heapData, setHeapData }) {
   function convertToDate(date) {
     let dateString = "";
     let dateList = date.split("-");
-    console.log(dateList);
     switch (dateList[1]) {
       case "01":
         dateString = dateList[2] + " Jan " + dateList[0];
@@ -99,10 +98,6 @@ export default function TaskBar({ heapData, setHeapData }) {
     }
     return dateString;
   }
-
-  useEffect(() => {
-    console.log(deleteTaskName);
-  }, [deleteTaskName]);
 
   return (
     <div className="bg-blue-400 p-4">

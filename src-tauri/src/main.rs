@@ -10,6 +10,7 @@ use tauri::{AppHandle, Manager};
 
 // declaring constants
 static FILE_PATH: &str = "C:/Users/Tanushkumaaar/OneDrive/Desktop/Tasks.txt";
+static CAT_FILE_PATH: &str = "C:/Users/Tanushkumaaar/OneDrive/Desktop/Categories.txt";
 
 // struct defining the task
 #[derive(Serialize, Clone, Debug)]
@@ -35,6 +36,12 @@ fn add_task_to_file(
     if name == "" || date == "" || category == "" || completion_time == 0 {
         return Err(String::from("Parameters are incorrect!"));
     }
+    let mut heap = state.heap.lock().unwrap();
+    let index = search_heap_by_name(&mut heap, name.clone());
+    let _i = match index {
+        Some(_index) => return Err(String::from("Name already present!")),
+        None => (),
+    };
     let date_vector: Vec<&str> = date.split("-").collect();
     let priority: u32 = calculate_priority(date_vector[0], date_vector[1], date_vector[2]);
     println!("{priority}");
@@ -47,7 +54,6 @@ fn add_task_to_file(
     };
 
     // Push task to heap
-    let mut heap = state.heap.lock().unwrap();
     push_heap(&mut heap, task)?;
     // Write to file
     let string_to_write = format!(
@@ -100,7 +106,10 @@ fn edit_task(
 
 // Function to send data of a particular task to frontend
 #[tauri::command]
-fn send_task_details(name: String, state: tauri::State<AppState>) -> Result<Option<Box<Task>>, String> {
+fn send_task_details(
+    name: String,
+    state: tauri::State<AppState>,
+) -> Result<Option<Box<Task>>, String> {
     let mut heap = state.heap.lock().unwrap();
     let index = search_heap_by_name(&mut heap, name);
     let index_to_send: usize = match index {
@@ -108,7 +117,7 @@ fn send_task_details(name: String, state: tauri::State<AppState>) -> Result<Opti
         None => return Err(String::from("Task name not found")),
     };
     let task_to_send = &heap[index_to_send];
-  Ok(task_to_send.clone())
+    Ok(task_to_send.clone())
 }
 
 // Function to read from file and update the heap
@@ -143,17 +152,48 @@ fn init_heap_from_file(
 }
 
 #[tauri::command]
- fn add_category_from_frontend(category_name: String, state: tauri::State<AppState>,) -> Result<(), String> {
+fn add_category_from_frontend(
+    category_name: String,
+    state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    if category_name == "" {
+        return Err(String::from("Parameter are incorrect!"));
+    }
     let mut cat_list = state.category_list.lock().unwrap();
-    add_category(category_name, &mut cat_list);
-  Ok(())
+    let _n = search_category(category_name.clone(), &mut cat_list);
+    let _: () = match _n {
+        Some(_n) => return Err(String::from("Name already present!")),
+        None => (),
+    };
+    let mut file = File::options()
+        .write(true)
+        .truncate(true)
+        .open(CAT_FILE_PATH)
+        .expect("Unable to open file for writing");
+    file.write_all(&category_name.as_bytes())
+        .expect("Error writing into file!");
+    add_category(category_name, &mut cat_list, app_handle);
+    Ok(())
 }
 
 #[tauri::command]
- fn delete_category_from_frontend(category_name: String, state: tauri::State<AppState>,) -> Result<(), String> {
+fn delete_category_from_frontend(
+    category_name: String,
+    state: tauri::State<AppState>,
+) -> Result<(), String> {
     let mut cat_list = state.category_list.lock().unwrap();
     delete_category(category_name, &mut cat_list)?;
-  Ok(())
+    Ok(())
+}
+
+#[tauri::command]
+fn init_cat_list_from_file(
+    state: tauri::State<AppState>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    
+    Ok(())
 }
 
 // Function to send heap from backend to frontend
@@ -169,36 +209,43 @@ fn send_heap_to_frontend(app_handle: AppHandle, heap: &Vec<Option<Box<Task>>>) {
 }
 
 // Function to traverse heap in priority order
-fn priority_traverse(heap: &Vec<Option<Box<Task>>>, new_heap: & mut Vec<Option<Box<Task>>>, index: usize) {
+fn priority_traverse(
+    heap: &Vec<Option<Box<Task>>>,
+    new_heap: &mut Vec<Option<Box<Task>>>,
+    index: usize,
+) {
     new_heap.push(heap[index].clone());
-    let left_index: usize = 2*index + 1;
-    let right_index: usize = 2*index + 2;
-    println!("length:{}",heap.len());
+    let left_index: usize = 2 * index + 1;
+    let right_index: usize = 2 * index + 2;
+    println!("length:{}", heap.len());
     if left_index < heap.len() && right_index >= heap.len() {
         priority_traverse(heap, new_heap, left_index);
         return ();
-    }
-    else if left_index >= heap.len() || right_index >= heap.len() {
+    } else if left_index >= heap.len() || right_index >= heap.len() {
         println!("1");
         return ();
     }
-    if heap[left_index].as_ref().unwrap()._priority < heap[right_index].as_ref().unwrap()._priority {
+    if heap[left_index].as_ref().unwrap()._priority < heap[right_index].as_ref().unwrap()._priority
+    {
         println!("2");
         priority_traverse(heap, new_heap, left_index);
         priority_traverse(heap, new_heap, right_index);
-    }
-    else if heap[left_index].as_ref().unwrap()._priority > heap[right_index].as_ref().unwrap()._priority {
+    } else if heap[left_index].as_ref().unwrap()._priority
+        > heap[right_index].as_ref().unwrap()._priority
+    {
         println!("3");
         priority_traverse(heap, new_heap, right_index);
         priority_traverse(heap, new_heap, left_index);
-    }
-    else{
+    } else {
         println!("4");
-        if heap[left_index].as_ref().unwrap()._completion_time < heap[right_index].as_ref().unwrap()._completion_time {
+        if heap[left_index].as_ref().unwrap()._completion_time
+            < heap[right_index].as_ref().unwrap()._completion_time
+        {
             priority_traverse(heap, new_heap, left_index);
             priority_traverse(heap, new_heap, right_index);
-        }
-        else if heap[left_index].as_ref().unwrap()._completion_time > heap[right_index].as_ref().unwrap()._completion_time {
+        } else if heap[left_index].as_ref().unwrap()._completion_time
+            > heap[right_index].as_ref().unwrap()._completion_time
+        {
             priority_traverse(heap, new_heap, right_index);
             priority_traverse(heap, new_heap, left_index);
         }
@@ -341,8 +388,9 @@ fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> Result<(), 
 }
 
 // Function to add categories into category name list
-fn add_category(cat_name: String, list: &mut Vec<String>) {
+fn add_category(cat_name: String, list: &mut Vec<String>, app_handle: AppHandle) {
     list.push(cat_name);
+    send_category_to_frontend(app_handle, list);
     print_cat_list(list);
 }
 
@@ -358,8 +406,8 @@ fn search_category(cat_name: String, list: &mut Vec<String>) -> Option<usize> {
 
 // Function to delete a category
 fn delete_category(cat_name: String, list: &mut Vec<String>) -> Result<(), String> {
-    if list.len() == 0{
-        return Ok(())
+    if list.len() == 0 {
+        return Ok(());
     }
     let i = search_category(cat_name, list);
     let index = match i {
@@ -370,26 +418,39 @@ fn delete_category(cat_name: String, list: &mut Vec<String>) -> Result<(), Strin
     print_cat_list(list);
     Ok(())
 }
- 
+
 // Function to print category list
 fn print_cat_list(list: &mut Vec<String>) {
     for i in list.iter() {
-        println!("{}",i);
+        println!("{}", i);
     }
+}
+
+// Function to send category list to frontend
+fn send_category_to_frontend(app_handle: AppHandle, list: &Vec<String>) {
+    let list_to_send = list.clone();
+    if let Err(e) = app_handle.emit_all("category_data", list_to_send) {
+        eprintln!("Failed to emit heap data: {:?}", e);
+    }
+    println!("Sent successfully")
 }
 
 // State struct to hold the heap
 struct AppState {
     heap: std::sync::Mutex<Vec<Option<Box<Task>>>>, // Using Mutex for thread safety
-    category_list: std::sync::Mutex<Vec<String>>
+    category_list: std::sync::Mutex<Vec<String>>,
 }
 
 // main function that runs the application loop
 fn main() {
-    // Create file if it doesn't exist
+    // Create files if it doesn't exist
     let path = Path::new(FILE_PATH);
     if !path.exists() {
         File::create(path).expect("Unable to create file");
+    }
+    let cat_path = Path::new(CAT_FILE_PATH);
+    if !cat_path.exists() {
+        File::create(cat_path).expect("Unable to create file");
     }
 
     // Initialize the heap
