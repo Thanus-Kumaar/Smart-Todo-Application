@@ -44,7 +44,6 @@ fn add_task_to_file(
     };
     let date_vector: Vec<&str> = date.split("-").collect();
     let priority: u32 = calculate_priority(date_vector[0], date_vector[1], date_vector[2]);
-    println!("{priority}");
     let task: Task = Task {
         _name: name.clone(),
         _date: date.clone(),
@@ -55,7 +54,6 @@ fn add_task_to_file(
 
     // Push task to heap
     push_heap(&mut heap, task)?;
-    println!("HEAP:");
     print_heap(&heap);
     send_heap_to_frontend(app_handle, &heap);
     write_heap_to_file(&heap);
@@ -120,7 +118,6 @@ fn init_heap_from_file(
     let _ = file.read_to_string(&mut buffer);
     let lines: Vec<&str> = buffer.split("\n").collect();
     for line in lines {
-        println!("{}", line);
         let mut flag: usize = 0;
         if line != "" {
             let params: Vec<&str> = line.split(",").collect();
@@ -141,7 +138,6 @@ fn init_heap_from_file(
             push_heap(&mut heap, task)?;
         }
     }
-    println!("{}", buffer);
     send_heap_to_frontend(app_handle, &heap);
     print_heap(&heap);
     Ok(())
@@ -162,14 +158,9 @@ fn add_category_from_frontend(
         Some(_n) => return Err(String::from("Name already present!")),
         None => (),
     };
-    let mut file = File::options()
-        .write(true)
-        .truncate(true)
-        .open(CAT_FILE_PATH)
-        .expect("Unable to open file for writing");
-    file.write_all(&category_name.as_bytes())
-        .expect("Error writing into file!");
-    add_category(category_name, &mut cat_list, app_handle);
+    add_category(category_name, &mut cat_list)?;
+    send_category_to_frontend(app_handle, &cat_list);
+    write_cat_list_to_file(&cat_list);
     Ok(())
 }
 
@@ -180,7 +171,9 @@ fn delete_category_from_frontend(
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let mut cat_list = state.category_list.lock().unwrap();
-    delete_category(category_name, &mut cat_list, app_handle)?;
+    delete_category(category_name, &mut cat_list)?;
+    send_category_to_frontend(app_handle, &cat_list);
+    write_cat_list_to_file(&cat_list);
     Ok(())
 }
 
@@ -189,6 +182,17 @@ fn init_cat_list_from_file(
     state: tauri::State<AppState>,
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
+    let mut list = state.category_list.lock().unwrap();
+    let mut file = File::open(CAT_FILE_PATH).unwrap();
+    let mut buffer = String::new();
+    let _ = file.read_to_string(&mut buffer);
+    println!("current buffer: {}", buffer);
+    let lines: Vec<&str> = buffer.split("\n").collect();
+    for line in lines {
+        println!("current line: {}",line);
+        add_category(line.to_string(), &mut list)?;
+    }
+    send_category_to_frontend(app_handle, &list);
     Ok(())
 }
 
@@ -196,8 +200,6 @@ fn init_cat_list_from_file(
 fn send_heap_to_frontend(app_handle: AppHandle, heap: &Vec<Option<Box<Task>>>) {
     let mut serializable_heap: Vec<Option<Box<Task>>> = Vec::new();
     priority_traverse(heap, &mut serializable_heap, 0);
-    println!("NEW HEAP: ");
-    print_heap(&serializable_heap);
     // Emit the data
     if let Err(e) = app_handle.emit_all("heap_data", serializable_heap) {
         eprintln!("Failed to emit heap data: {:?}", e);
@@ -357,6 +359,7 @@ fn calculate_priority(year: &str, month: &str, day: &str) -> u32 {
 
 // Function to print heap
 fn print_heap(heap: &Vec<Option<Box<Task>>>) {
+    println!("HEAP:\n");
     for i in heap {
         if let Some(v) = i {
             println!("{}", v._name);
@@ -382,10 +385,10 @@ fn pop_heap(heap: &mut Vec<Option<Box<Task>>>, task_name: String) -> Result<(), 
 }
 
 // Function to add categories into category name list
-fn add_category(cat_name: String, list: &mut Vec<String>, app_handle: AppHandle) {
+fn add_category(cat_name: String, list: &mut Vec<String>) -> Result<(),String> {
     list.push(cat_name);
-    send_category_to_frontend(app_handle, list);
     print_cat_list(list);
+    Ok(())
 }
 
 // Function to search for a category name
@@ -402,7 +405,6 @@ fn search_category(cat_name: String, list: &mut Vec<String>) -> Option<usize> {
 fn delete_category(
     cat_name: String,
     list: &mut Vec<String>,
-    app_handle: AppHandle,
 ) -> Result<(), String> {
     if list.len() == 0 {
         return Ok(());
@@ -413,13 +415,12 @@ fn delete_category(
         None => return Err(String::from("Category name not found")),
     };
     list.remove(index);
-    send_category_to_frontend(app_handle, list);
-    print_cat_list(list);
     Ok(())
 }
 
 // Function to print category list
 fn print_cat_list(list: &mut Vec<String>) {
+    println!("Category list: ");
     for i in list.iter() {
         println!("{}", i);
     }
@@ -427,11 +428,11 @@ fn print_cat_list(list: &mut Vec<String>) {
 
 // Function to send category list to frontend
 fn send_category_to_frontend(app_handle: AppHandle, list: &Vec<String>) {
-    let list_to_send = list.clone();
+    let mut list_to_send = list.clone();
+    print_cat_list(&mut list_to_send);
     if let Err(e) = app_handle.emit_all("category_data", list_to_send) {
         eprintln!("Failed to emit heap data: {:?}", e);
     }
-    println!("Sent successfully")
 }
 
 // Function to write heap data to file
@@ -463,6 +464,20 @@ fn write_heap_to_file(heap: &Vec<Option<Box<Task>>>) {
     }
 }
 
+// Function to write category list to file
+fn write_cat_list_to_file(list: &Vec<String>) {
+    let mut file = File::options()
+        .write(true)
+        .truncate(true)
+        .open(CAT_FILE_PATH)
+        .expect("Unable to open file for writing");
+    for i in list.iter() {
+        let string_to_write = format!("{}\n", i);
+        file.write_all(string_to_write.as_bytes())
+            .expect("Error writing into file!");
+    }
+}
+
 // State struct to hold the heap
 struct AppState {
     heap: std::sync::Mutex<Vec<Option<Box<Task>>>>, // Using Mutex for thread safety
@@ -488,7 +503,7 @@ fn main() {
         heap: std::sync::Mutex::new(heap),
         category_list: std::sync::Mutex::new(categories),
     };
-
+    
     tauri::Builder::default()
         .manage(app_state) // Manage app state
         .invoke_handler(tauri::generate_handler![
@@ -498,7 +513,8 @@ fn main() {
             send_task_details,
             edit_task,
             add_category_from_frontend,
-            delete_category_from_frontend
+            delete_category_from_frontend,
+            init_cat_list_from_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
