@@ -6,7 +6,7 @@ import { Dialog } from "@mui/material";
 import { invoke } from "@tauri-apps/api/tauri";
 import AddTask from "./AddTask";
 
-export default function TaskBar({ heapData, setHeapData }) {
+export default function TaskBar({ heapData, setHeapData, categoryList }) {
   const [deleteTaskName, setDeleteTaskName] = useState("");
 
   const [open, setOpen] = useState(false);
@@ -136,6 +136,7 @@ export default function TaskBar({ heapData, setHeapData }) {
         setTime={setTime}
         isEdit={true}
         oldName={oldName}
+        categoryList={categoryList}
       />
       <div className="p-2 italic font-semibold text-[25px] text-center">CURRENT TASKS</div>
       <hr className="border-black border"></hr>

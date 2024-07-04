@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 import AddTask from "./components/AddTask";
+import AddCategory from "./components/AddCategory";
 import Tasks from "./components/TaskBar";
 
 import { IoMdAdd } from "react-icons/io";
 import { TbCategory2 } from "react-icons/tb";
 import { MdOutlineAddTask } from "react-icons/md";
 import { IoMdClose } from "react-icons/io";
-import { IoCloseCircle } from "react-icons/io5";
 
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/tauri";
-import { Dialog } from "@mui/material";
 
 function App() {
   const [addTaskOpen, setAddTaskOpen] = useState(false);
@@ -29,9 +28,6 @@ function App() {
   const [showAdd, setShowAdd] = useState(false);
 
   const [openAddCat, setOpenAddCat] = useState(false);
-  function handleCatClose() {
-    setOpenAddCat(false);
-  }
 
   listen("heap_data", (event) => {
     setHeap(event.payload);
@@ -65,30 +61,6 @@ function App() {
     }
   }
 
-  async function addCategory() {
-    try {
-      console.log("initialising add category...");
-      const response = await invoke("add_category_from_frontend", {
-        categoryName: newCat,
-      });
-      console.log(response);
-    } catch (error) {
-      console.log("Error: ", error);
-    }
-  }
-
-  async function deleteCategory(catName) {
-    try {
-      console.log("initialising delete category...");
-      const response = await invoke("delete_category_from_frontend", {
-        categoryName: catName,
-      });
-      console.log(response);
-    } catch (error) {
-      console.log("Error: ", error);
-    }
-  }
-
   useEffect(() => {
     if (initCount == 0) {
       init_heap();
@@ -103,10 +75,22 @@ function App() {
         Smart Task Tracker
       </div>
       <div className=" overflow-scroll removeScrollBar">
-        <Tasks heapData={heap} setHeapData={setHeap} />
+        <Tasks
+          heapData={heap}
+          setHeapData={setHeap}
+          categoryList={categoryList}
+        />
       </div>
       <div className=" absolute bottom-8 right-8 flex flex-col gap-4">
         <div className={showAdd ? "flex flex-row gap-4" : "hidden"}>
+          <button
+            onClick={() => {
+              setOpenAddCat(true);
+            }}
+            className='relative bg-white p-2 w-fit rounded-full before:absolute before:-left-2 before:-top-12 before:h-6 before:w-16 before:content-["Add_Category"] before:text-black before:text-sm before:scale-0 before:transition before:duration-150 hover:before:scale-100'
+          >
+            <TbCategory2 className="h-8 w-8" />
+          </button>
           <button
             onClick={() => {
               setName("");
@@ -118,14 +102,6 @@ function App() {
             className='relative bg-white p-2 w-fit rounded-full before:absolute before:-left-2 before:-top-8 before:h-6 before:w-16 before:content-["Add_Task"] before:text-black before:text-sm before:scale-0 before:transition before:duration-150 hover:before:scale-100'
           >
             <MdOutlineAddTask className="h-8 w-8" />
-          </button>
-          <button
-            onClick={() => {
-              setOpenAddCat(true);
-            }}
-            className='relative bg-white p-2 w-fit rounded-full before:absolute before:-left-2 before:-top-12 before:h-6 before:w-16 before:content-["Add_Category"] before:text-black before:text-sm before:scale-0 before:transition before:duration-150 hover:before:scale-100'
-          >
-            <TbCategory2 className="h-8 w-8" />
           </button>
         </div>
         <button
@@ -160,50 +136,13 @@ function App() {
         isEdit={false}
         categoryList={categoryList}
       />
-      <Dialog open={openAddCat} onClose={handleCatClose}>
-        <div className="p-6 w-80">
-          <div className="flex flex-col gap-1">
-            <label className="block text-sm" htmlFor="catName">
-              Category Name
-            </label>
-            <input
-              className="bg-slate-200 pl-2 p-1"
-              value={newCat}
-              onChange={(e) => {
-                setNewCat(e.target.value);
-              }}
-              placeholder="Name"
-              type="text"
-              name="catName"
-            />
-            <button
-              onClick={() => addCategory()}
-              className="p-2 bg-green-300 w-14 mt-2 mx-auto rounded-md text-xs"
-            >
-              Add
-            </button>
-          </div>
-
-          <div className="text-center mt-10 font-bold">Current Categories</div>
-          <div className="flex flex-row gap-2 flex-wrap mt-4">
-            {categoryList != undefined ? (
-              categoryList.map((category, index) => (
-                <div
-                  className="bg-slate-200 rounded-full w-fit px-2 flex flex-row pl-2"
-                  key={index}
-                >
-                  <div>{category}</div>
-                  <div onClick={() => deleteCategory(category)}>
-                    <IoCloseCircle className="h-4 w-4 mt-1 cursor-pointer ml-2" />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div>No categories created!</div>
-            )}
-          </div>
-        </div>
-      </Dialog>
+      <AddCategory
+        openAddCat={openAddCat}
+        setOpenAddCat={setOpenAddCat}
+        setNewCat={setNewCat}
+        newCat={newCat}
+        categoryList={categoryList}
+      />
     </div>
   );
 }
