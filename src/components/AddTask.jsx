@@ -1,9 +1,23 @@
 import { Dialog } from "@mui/material";
-import {Alert} from "@mui/material";
+import { Alert } from "@mui/material";
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/tauri";
 
-export default function ({ open, setOpen, name, setName, category, setCategory, date, setDate, timeToConsume, setTime, isEdit, oldName }) {
+export default function ({
+  open,
+  setOpen,
+  name,
+  setName,
+  category,
+  setCategory,
+  date,
+  setDate,
+  timeToConsume,
+  setTime,
+  isEdit,
+  oldName,
+  categoryList,
+}) {
   const [alertMsg, setAlertMsg] = useState("");
   const [alertType, setAlertType] = useState("");
   const [displayAlert, setDisplayAlert] = useState(false);
@@ -11,7 +25,7 @@ export default function ({ open, setOpen, name, setName, category, setCategory, 
   const handleClose = () => {
     setOpen(false);
   };
-  
+
   async function editTask() {
     try {
       const response = await invoke("edit_task", {
@@ -25,17 +39,17 @@ export default function ({ open, setOpen, name, setName, category, setCategory, 
       setAlertMsg("Added task successfully !");
       setAlertType("success");
       setDisplayAlert(true);
-      setTimeout(()=>{
-        setDisplayAlert(false); 
-      },3000)
+      setTimeout(() => {
+        setDisplayAlert(false);
+      }, 3000);
     } catch (error) {
       console.error("Error invoking command:", error);
       setAlertMsg(error);
       setAlertType("error");
       setDisplayAlert(true);
-      setTimeout(()=>{
-        setDisplayAlert(false); 
-      },3000)
+      setTimeout(() => {
+        setDisplayAlert(false);
+      }, 3000);
     }
   }
 
@@ -51,33 +65,38 @@ export default function ({ open, setOpen, name, setName, category, setCategory, 
       setAlertMsg("Added task successfully !");
       setAlertType("success");
       setDisplayAlert(true);
-      setTimeout(()=>{
-        setDisplayAlert(false); 
-      },3000)
+      setTimeout(() => {
+        setDisplayAlert(false);
+      }, 3000);
     } catch (error) {
       console.error("Error invoking command:", error);
       setAlertMsg(error);
       setAlertType("error");
       setDisplayAlert(true);
-      setTimeout(()=>{
-        setDisplayAlert(false); 
-      },3000)
+      setTimeout(() => {
+        setDisplayAlert(false);
+      }, 3000);
     }
   }
 
   return (
     <div>
-      <Dialog open={open} onClose={handleClose}
-      className=""
-      >
-        <Alert severity={alertType} style={{ display: displayAlert == false ? "none" : "" }}>{alertMsg}</Alert>
+      <Dialog open={open} onClose={handleClose} className="">
+        <Alert
+          severity={alertType}
+          style={{ display: displayAlert == false ? "none" : "" }}
+        >
+          {alertMsg}
+        </Alert>
         <div className="p-4 w-[500px] bg-blue-200">
-          <div className="text-xl text-center mb-4">{isEdit?"Edit Task":"Add Task"}</div>
+          <div className="text-xl text-center mb-4">
+            {isEdit ? "Edit Task" : "Add Task"}
+          </div>
           <form
             className="flex flex-col mx-auto gap-3"
             onSubmit={(e) => {
               e.preventDefault();
-              isEdit?editTask():addToFile();
+              isEdit ? editTask() : addToFile();
             }}
           >
             <input
@@ -87,13 +106,30 @@ export default function ({ open, setOpen, name, setName, category, setCategory, 
               onChange={(e) => setName(e.currentTarget.value)}
               placeholder="Task Name"
             />
-            <input
-              className="p-2 rounded-md m-2 bg-slate-200 border-[1px] border-black"
-              id="task-cat"
-              value={category}
-              onChange={(e) => setCategory(e.currentTarget.value)}
+            <select
+              name="Category"
               placeholder="Category"
-            />
+              className="p-2 rounded-md m-2 bg-slate-200 border-[1px] border-black"
+              value={category}
+              onChange={(e) => {
+                setCategory(e.target.value);
+              }}
+            >
+              {Array.isArray(categoryList) && categoryList.length > 0 ? (
+                categoryList.map((element, index) => {
+                  console.log("Option:", element);
+                  return (
+                    <option key={index} value={element}>
+                      {element}
+                    </option>
+                  );
+                })
+              ) : (
+                <option value="" disabled>
+                  No category is available!
+                </option>
+              )}
+            </select>
             <input
               className="p-2 rounded-md m-2 bg-slate-200 border-[1px] border-black"
               id="due-date"
@@ -119,7 +155,7 @@ export default function ({ open, setOpen, name, setName, category, setCategory, 
               className="bg-blue-500 text-white p-3 w-28 text-center mx-auto rounded-md"
               type="submit"
             >
-              {isEdit?"Edit":"Add"}
+              {isEdit ? "Edit" : "Add"}
             </button>
           </form>
         </div>

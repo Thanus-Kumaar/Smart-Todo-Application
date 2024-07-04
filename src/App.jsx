@@ -56,8 +56,18 @@ function App() {
     }
   }
 
+  async function init_cat_list() {
+    try {
+      const response = await invoke("init_cat_list_from_file");
+      console.log("#######", response);
+    } catch (error) {
+      console.error("Error invoking command:", error);
+    }
+  }
+
   async function addCategory() {
     try {
+      console.log("initialising add category...");
       const response = await invoke("add_category_from_frontend", {
         categoryName: newCat,
       });
@@ -69,6 +79,7 @@ function App() {
 
   async function deleteCategory(catName) {
     try {
+      console.log("initialising delete category...");
       const response = await invoke("delete_category_from_frontend", {
         categoryName: catName,
       });
@@ -81,6 +92,7 @@ function App() {
   useEffect(() => {
     if (initCount == 0) {
       init_heap();
+      init_cat_list();
       setInitCount(1);
     }
   }, []);
@@ -146,34 +158,32 @@ function App() {
         timeToConsume={timeToConsume}
         setTime={setTime}
         isEdit={false}
+        categoryList={categoryList}
       />
       <Dialog open={openAddCat} onClose={handleCatClose}>
         <div className="p-6 w-80">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              addCategory();
-            }}
-          >
-            <div className="flex flex-col gap-1">
-              <label className="block text-sm" htmlFor="catName">
-                Category Name
-              </label>
-              <input
-                className="bg-slate-200 pl-2 p-1"
-                value={newCat}
-                onChange={(e) => {
-                  setNewCat(e.target.value);
-                }}
-                placeholder="Name"
-                type="text"
-                name="catName"
-              />
-              <button className="p-2 bg-green-300 w-14 mt-2 mx-auto rounded-md text-xs">
-                Add
-              </button>
-            </div>
-          </form>
+          <div className="flex flex-col gap-1">
+            <label className="block text-sm" htmlFor="catName">
+              Category Name
+            </label>
+            <input
+              className="bg-slate-200 pl-2 p-1"
+              value={newCat}
+              onChange={(e) => {
+                setNewCat(e.target.value);
+              }}
+              placeholder="Name"
+              type="text"
+              name="catName"
+            />
+            <button
+              onClick={() => addCategory()}
+              className="p-2 bg-green-300 w-14 mt-2 mx-auto rounded-md text-xs"
+            >
+              Add
+            </button>
+          </div>
+
           <div className="text-center mt-10 font-bold">Current Categories</div>
           <div className="flex flex-row gap-2 flex-wrap mt-4">
             {categoryList != undefined ? (
@@ -183,7 +193,7 @@ function App() {
                   key={index}
                 >
                   <div>{category}</div>
-                  <div onClick={deleteCategory(category)}>
+                  <div onClick={() => deleteCategory(category)}>
                     <IoCloseCircle className="h-4 w-4 mt-1 cursor-pointer ml-2" />
                   </div>
                 </div>

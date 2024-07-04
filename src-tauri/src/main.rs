@@ -189,8 +189,18 @@ fn init_cat_list_from_file(
     println!("current buffer: {}", buffer);
     let lines: Vec<&str> = buffer.split("\n").collect();
     for line in lines {
+        let mut flag: usize = 0;
         println!("current line: {}",line);
-        add_category(line.to_string(), &mut list)?;
+        if line != "" {
+            let index = search_category(line.to_string(), &mut list);
+            if let Some(_) = index {
+                flag = 1;
+            }
+            if flag == 1 {
+                delete_category(line.to_string(), &mut list)?;
+            }
+            add_category(line.to_string(), &mut list)?;
+        }
     }
     send_category_to_frontend(app_handle, &list);
     Ok(())
