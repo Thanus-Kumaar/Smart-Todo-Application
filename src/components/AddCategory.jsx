@@ -79,7 +79,8 @@ export default function AddCategory({
             />
             <button
               onClick={() => addCategory()}
-              className="p-2 bg-green-300 w-14 mt-2 mx-auto rounded-md text-xs"
+              className="p-2 bg-green-300 w-14 mt-2 mx-auto rounded-md text-xs disabled:cursor-not-allowed disabled:opacity-70"
+              disabled={newCat == "" ? true : false}
             >
               Add
             </button>

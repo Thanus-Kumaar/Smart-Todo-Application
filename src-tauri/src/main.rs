@@ -7,10 +7,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 use tauri::{AppHandle, Manager};
+use dirs;
 
-// declaring constants
-static FILE_PATH: &str = "C:/Users/Tanushkumaaar/OneDrive/Desktop/Tasks.txt";
-static CAT_FILE_PATH: &str = "C:/Users/Tanushkumaaar/OneDrive/Desktop/Categories.txt";
 
 // struct defining the task
 #[derive(Serialize, Clone, Debug)]
@@ -113,7 +111,7 @@ fn init_heap_from_file(
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let mut heap = state.heap.lock().unwrap();
-    let mut file = File::open(FILE_PATH).unwrap();
+    let mut file = File::open(&get_file_path("Tasks.txt")).unwrap();
     let mut buffer = String::new();
     let _ = file.read_to_string(&mut buffer);
     let lines: Vec<&str> = buffer.split("\n").collect();
@@ -183,7 +181,7 @@ fn init_cat_list_from_file(
     app_handle: tauri::AppHandle,
 ) -> Result<(), String> {
     let mut list = state.category_list.lock().unwrap();
-    let mut file = File::open(CAT_FILE_PATH).unwrap();
+    let mut file = File::open(&get_file_path("Categories.txt")).unwrap();
     let mut buffer = String::new();
     let _ = file.read_to_string(&mut buffer);
     println!("current buffer: {}", buffer);
@@ -209,7 +207,9 @@ fn init_cat_list_from_file(
 // Function to send heap from backend to frontend
 fn send_heap_to_frontend(app_handle: AppHandle, heap: &Vec<Option<Box<Task>>>) {
     let mut serializable_heap: Vec<Option<Box<Task>>> = Vec::new();
-    priority_traverse(heap, &mut serializable_heap, 0);
+    if heap.len() > 0 {
+        priority_traverse(heap, &mut serializable_heap, 0);
+    }
     // Emit the data
     if let Err(e) = app_handle.emit_all("heap_data", serializable_heap) {
         eprintln!("Failed to emit heap data: {:?}", e);
@@ -455,7 +455,7 @@ fn write_heap_to_file(heap: &Vec<Option<Box<Task>>>) {
     let mut file = File::options()
         .write(true)
         .truncate(true)
-        .open(FILE_PATH)
+        .open(&get_file_path("Tasks.txt"))
         .expect("Unable to open file for writing");
     for i in heap.iter() {
         if let Some(task) = i {
@@ -479,7 +479,7 @@ fn write_cat_list_to_file(list: &Vec<String>) {
     let mut file = File::options()
         .write(true)
         .truncate(true)
-        .open(CAT_FILE_PATH)
+        .open(&get_file_path("Categories.txt"))
         .expect("Unable to open file for writing");
     for i in list.iter() {
         let string_to_write = format!("{}\n", i);
@@ -494,14 +494,27 @@ struct AppState {
     category_list: std::sync::Mutex<Vec<String>>,
 }
 
+// Function to get file paths
+fn get_file_path(filename: &str) -> String {
+    // Get the user's home directory
+    let home_dir = dirs::home_dir().expect("Failed to get home directory");
+
+    // Append the filename to the home directory path
+    let file_path = home_dir.join(filename);
+    println!("{}",file_path.to_str().expect("Failed to convert path to string").to_string());
+    file_path.to_str().expect("Failed to convert path to string").to_string()
+}
+
 // main function that runs the application loop
 fn main() {
     // Create files if it doesn't exist
-    let path = Path::new(FILE_PATH);
+    let binding = get_file_path("Tasks.txt");
+    let path = Path::new(&binding);
     if !path.exists() {
         File::create(path).expect("Unable to create file");
     }
-    let cat_path = Path::new(CAT_FILE_PATH);
+    let binding = get_file_path("Categories.txt");
+    let cat_path = Path::new(&binding);
     if !cat_path.exists() {
         File::create(cat_path).expect("Unable to create file");
     }

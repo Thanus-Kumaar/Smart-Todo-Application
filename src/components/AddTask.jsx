@@ -115,6 +115,9 @@ export default function ({
                 setCategory(e.target.value);
               }}
             >
+              <option value="" disabled>
+                Select a category..
+              </option>
               {Array.isArray(categoryList) && categoryList.length > 0 ? (
                 categoryList.map((element, index) => {
                   console.log("Option:", element);
@@ -125,9 +128,7 @@ export default function ({
                   );
                 })
               ) : (
-                <option value="" disabled>
-                  No category is available!
-                </option>
+                ""
               )}
             </select>
             <input
@@ -152,8 +153,13 @@ export default function ({
               onChange={(e) => setTime(e.currentTarget.value)}
             />
             <button
-              className="bg-blue-500 text-white p-3 w-28 text-center mx-auto rounded-md"
+              className="bg-blue-500 text-white p-3 w-28 text-center mx-auto rounded-md disabled:cursor-not-allowed disabled:opacity-70"
               type="submit"
+              disabled={
+                name == "" || category == "" || date == "" || timeToConsume == 0
+                  ? true
+                  : false
+              }
             >
               {isEdit ? "Edit" : "Add"}
             </button>
